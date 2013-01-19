@@ -1,7 +1,56 @@
 @(message: String)
 
-@main("Welcome to Play 2.0") {
-    
-    @play20.welcome(message)
-    
+@import helper._
+@import helper.twitterBootstrap._
+
+@main("The Dining Philosophers") {
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="#">Dining Philosophers</a>
+          <div class="nav-collapse collapse">
+            <ul class="nav">
+              <li class="active"><a href="#">Home</a></li>
+              <li><a href="#about">About</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <h1>message</h1>
+      <label>Philosopher 1:</label>
+      <input text="text" ng-model="phil-1" placeholder="Plato">
+      <label>Philosopher 2:</label>
+      <input text="text" ng-model="phil-2" placeholder="Socrates">
+      <label>Philosopher 3:</label>
+      <input text="text" ng-model="phil-3" placeholder="Aristotle">  
+      <label>Philosopher 4:</label>
+      <input text="text" ng-model="phil-4" placeholder="Heraclitus">  
+      <label>Philosopher 5:</label>
+      <input text="text" ng-model="phil-5" placeholder="Parmenides">
+      <hr>
+      <h1>{{phil-1}}, {{phil-2}}, {{phil-3}}, {{phil-4}} and {{phil-5}} decide to eat at Tao's. Unfortunately, there is a shortage of chopsticks and each of the guests must share...</h1>
+      @form(routes.Application.start) {
+        <input type="submit" value="Simulate">
+      }
+      @form(controllers.Application.stop) {
+        <input type="submit" value="Stop">
+      }
+      div(ng-controller='ChatCtrl')
+      .col
+        h3 Results:
+        .overflowable
+          p(ng-repeat='message in messages') {{message.get}}
+          
+      </div> <!-- /container -->     
 }

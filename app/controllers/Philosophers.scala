@@ -13,9 +13,10 @@ object Put
 object Busy
 object Eat
 object Think
+case class Message(s: String)
 
-class Philosopher(name: String, left: ActorRef, right: ActorRef) extends Actor {
-	println(name + " has " + left + " and " + right)
+class Philosopher(name: String, left: ActorRef, right: ActorRef, restaurant: ActorRef) extends Actor {
+	restaurant ! name + " has " + left + " and " + right
 	
 	def thinking:Receive = {
 		
@@ -29,11 +30,11 @@ class Philosopher(name: String, left: ActorRef, right: ActorRef) extends Actor {
 		case Taken =>
 			if(sender == left){
 				context.become(waitingfor(right, left))
-				println(name + " is waiting for " + right)
+				restaurant ! name + " is waiting for " + right
 			}
 			else{
 				context.become(waitingfor(left, right))				
-				println(name + " is waiting for " + left)
+				restaurant ! name + " is waiting for " + left
 			}
 	}
 
@@ -41,7 +42,7 @@ class Philosopher(name: String, left: ActorRef, right: ActorRef) extends Actor {
 
 		case Think =>
 			context.become(thinking)
-		    println(name + " is thinking.")
+		    restaurant ! name + " is thinking."
 		    left ! Put
 		    right ! Put
 	}
@@ -49,59 +50,89 @@ class Philosopher(name: String, left: ActorRef, right: ActorRef) extends Actor {
 	def waitingfor(chopstick: ActorRef, otherstick: ActorRef):Receive = {
 		case Taken =>
 			context.become(eating)
-			println(name + " got both chopsticks and is now eating.")
+			restaurant ! name + " got both chopsticks and is now eating."
 			context.system.scheduler.scheduleOnce(Duration(5, "seconds"), self, Think)
 		case Busy =>
 			context.become(thinking)
-			println(name + " is thinking.")
+			restaurant ! name + " is thinking."
 			otherstick ! Put
 			context.system.scheduler.scheduleOnce(Duration(5, "seconds"), self, Eat)
 	}
 
 	def denied:Receive = {
 		case Taken =>
-			println(name + " was denied!")
+			restaurant ! name + " was denied!"
 			sender ! Put
 			context.become(thinking)
-			println(name + " is thinking.")
+			restaurant ! name + " is thinking."
 			context.system.scheduler.scheduleOnce(Duration(5, "seconds"), self, Eat)
 		case Busy =>
-			println(name + " was denied!")
+			restaurant ! name + " was denied!"
 			context.become(thinking)
-			println(name + " is thinking.")
+			restaurant ! name + " is thinking."
 			context.system.scheduler.scheduleOnce(Duration(5, "seconds"), self, Eat)
 	}
 
 	def receive = thinking
 }
 
-class Chopstick(number: Int) extends Actor{
+class Chopstick(number: Int, restaurant: ActorRef) extends Actor {
 	def free:Receive = {
 		case Take =>
-			println(number + " is now taken by " + sender)
+			restaurant ! number + " is now taken by " + sender
 			sender ! Taken
 			context.become(takenby(sender))
 	}
 
 	def takenby(phil: ActorRef):Receive = {
 		case Take =>
-			println(number + " was requested by " + sender + " but is already taken by " + phil + ".")
+			restaurant ! number + " was requested by " + sender + " but is already taken by " + phil + "."
 			sender ! Busy
 
 		case Put =>
-			println(number + " was put back by " + sender)
+			restaurant ! number + " was put back by " + sender
 			context.become(free)
 	}
 
 	def receive = free
 }
 
-object Dining {
+class Restaurant extends Actor {
+	
+	val actorStream:Enumerator[Array[Byte]] = Enumerator.fromCallback { () =>
+		//Promise.timeout(Some(restarant ? Dump), 100 milliseconds)
+		(master ? Dump)(10.seconds).mapto(...).asPromise
+		//return new Enumerator( new Promise(new String(), 100));
+	}
 
-	def runDining = {
-		val system = ActorSystem("DiningSystem")
-		val chopsticks = for(i <- 1 to 5) yield system.actorOf(Props(new Chopstick(i)), i.toString)
-		val philosophers = for((name, i) <- List("A","B","C","D","E").zipWithIndex) yield system.actorOf(Props(new Philosopher(name,chopsticks(i), chopsticks((i+1) % 5))),name) 
+    val messages:List[String]
+
+	def mainStream:Receive = {
+		case Message(data) => 
+			messages = messages + data
+		case Dump =>
+			sender ! messages
+			messages = List()//empty list
+			//actorStream |>> Iteratee.forEach[String](s => println(s))
+	}
+
+	def receive = mainStream
+}
+
+object Dining {
+	
+	val system = ActorSystem("DiningSystem")
+
+	def runDining:Stream[Array[Bytes]] = {
+		val restaurant = system.actorOf(Props(new Restaurant()))
+		val chopsticks = for(i <- 1 to 5) yield system.actorOf(Props(new Chopstick(i, restaurant)), i.toString)
+		val philosophers = for((name, i) <- List("A","B","C","D","E").zipWithIndex) yield system.actorOf(Props(new Philosopher(name,chopsticks(i), chopsticks((i+1) % 5),restaurant)),name) 
 		philosophers.foreach(_ ! Eat)
+		restaurant ! "Dinner is served."
+		restaurant.actorStream
+	}
+
+	def stopDining = {
+		system.shutdown
 	}
 }
