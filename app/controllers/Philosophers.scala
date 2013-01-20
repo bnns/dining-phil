@@ -4,8 +4,12 @@ import akka.actor._
 import akka.actor.Actor._
 import akka.actor.Props
 import akka.event.Logging
-import akka.util.Duration
+import akka.util.duration._
 import java.util.concurrent.TimeUnit
+import akka.util._
+//import scala.concurrent.duration._
+import akka.pattern._
+import play.api.libs.concurrent._
 
 object Take
 object Taken
@@ -96,25 +100,31 @@ class Chopstick(number: Int, restaurant: ActorRef) extends Actor {
 
 	def receive = free
 }
+object Dump
 
 class Restaurant extends Actor {
-	
-	val actorStream:Enumerator[Array[Byte]] = Enumerator.fromCallback { () =>
-		//Promise.timeout(Some(restarant ? Dump), 100 milliseconds)
-		(master ? Dump)(10.seconds).mapto(...).asPromise
-		//return new Enumerator( new Promise(new String(), 100));
-	}
 
-    val messages:List[String]
+    var messages:List[String] = List()
 
 	def mainStream:Receive = {
-		case Message(data) => 
-			messages = messages + data
 		case Dump =>
-			sender ! messages
+			val data:Array[Byte] = messages.flatMap(msg => msg.toCharArray.map(_.toByte)).toArray//messages.foreach(msg => msg.toCharArray.map(_.toByte))
+			
+			//println(new String(data))
+			sender ! data
 			messages = List()//empty list
 			//actorStream |>> Iteratee.forEach[String](s => println(s))
+		case msg:String =>
+			//println(msg)
+			messages = msg :: messages
 	}
+	def toHexString(bytes:Array[Byte]) : String = {
+      val sb = new StringBuilder();
+      for(i <- 0 until bytes.length){
+        sb.append("%02x".format(bytes(i)))
+      }
+      return sb.toString()
+    }
 
 	def receive = mainStream
 }
@@ -123,13 +133,20 @@ object Dining {
 	
 	val system = ActorSystem("DiningSystem")
 
-	def runDining:Stream[Array[Bytes]] = {
+	def runDinings = {
 		val restaurant = system.actorOf(Props(new Restaurant()))
 		val chopsticks = for(i <- 1 to 5) yield system.actorOf(Props(new Chopstick(i, restaurant)), i.toString)
 		val philosophers = for((name, i) <- List("A","B","C","D","E").zipWithIndex) yield system.actorOf(Props(new Philosopher(name,chopsticks(i), chopsticks((i+1) % 5),restaurant)),name) 
 		philosophers.foreach(_ ! Eat)
 		restaurant ! "Dinner is served."
-		restaurant.actorStream
+		//restaurantObj.actorStream
+
+		val actorStream = { () =>
+			//Promise.timeout(Some(restarant ? Dump), 100 milliseconds)
+			(restaurant ? Dump)(5 seconds).mapTo[Option[Array[Byte]]].asPromise//.asPromise
+			//return new Promise(new String(), 100);
+		}
+		actorStream
 	}
 
 	def stopDining = {
