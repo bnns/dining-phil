@@ -5,6 +5,10 @@
 # Home page
 GET     /                           controllers.Application.index
 
+GET     /start                      controllers.Application.start
+
+GET     /stop                       controllers.Application.stop
+
 GET 	/messages					controllers.Application.act
 
 # Map static resources from the /public folder to the /assets URL path
