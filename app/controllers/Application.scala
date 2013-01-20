@@ -15,26 +15,33 @@ object Application extends Controller {
 	def index = Action {
 		val data = Dining.runDinings
 		val dataContent:Enumerator[Array[Byte]] = Enumerator.fromCallback(data)
-		//for(i <- dataContent){println(i)}
-		Ok.stream(dataContent.andThen(Enumerator.eof))
+		Ok.stream(/*dataContent.andThen(Enumerator.eof)*/views.html.index("test"))		
 	}
 	
 	def start = Action {
-		Dining.runDinings
-		Ok("Start")
+		val data = Dining.runDinings
+		val dataContent:Enumerator[Array[Byte]] = Enumerator.fromCallback(data)
+		Ok.stream(dataContent.andThen(Enumerator.eof))
 	}
 	
+	def chatRoom(username: Option[String]) = Action { implicit request =>
+    	username.filterNot(_.isEmpty).map { username =>
+      		Ok(views.html.chatRoom(username))
+    	}.getOrElse {
+      		Redirect(routes.Application.index).flashing(
+        		"error" -> "Please choose a valid username."
+      		)
+    	}
+  	}
+
 	def stop = Action {
 		Dining.stopDining
 		Ok("End")
 	}
 	
 	def act = Action { implicit request =>
-		// to get a Blah object from request content
-		val blah = json.Json.parse(request.body.asText.get).as[String]
-	
-		// to return Blah as application/json, you just have to convert your Blah to a JsValue and give it to Ok()
-		Ok(json.Json.toJson(blah))
+		val items = json.Json.parse(request.body.asText.get).as[String]	
+		Ok(json.Json.toJson(items))
 	}
 
 }
