@@ -13,17 +13,18 @@ import models._
 object Application extends Controller {
   
 	def index = Action {
-		val data = Dining.runDining
-		val dataContent: Enumerator[Array[Byte]] = data
+		val data = Dining.runDinings
+		val dataContent:Enumerator[Array[Byte]] = Enumerator.fromCallback(data)
+		//for(i <- dataContent){println(i)}
 		Ok.stream(dataContent.andThen(Enumerator.eof))
 	}
 	
 	def start = Action {
-		Dining.runDining
+		Dining.runDinings
 		Ok("Start")
 	}
 	
-	def stop = {
+	def stop = Action {
 		Dining.stopDining
 		Ok("End")
 	}
