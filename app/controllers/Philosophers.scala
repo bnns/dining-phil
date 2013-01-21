@@ -7,7 +7,6 @@ import akka.event.Logging
 import akka.util.duration._
 import java.util.concurrent.TimeUnit
 import akka.util._
-//import scala.concurrent.duration._
 import akka.pattern._
 import play.api.libs.concurrent._
 
@@ -108,7 +107,7 @@ class Restaurant extends Actor {
 
 	def mainStream:Receive = {
 		case Dump =>
-			val data:Array[Byte] = messages.flatMap(msg => msg.toCharArray.map(_.toByte)).toArray//messages.foreach(msg => msg.toCharArray.map(_.toByte))
+			val data = Some(messages.reverse)//messages.foreach(msg => msg.toCharArray.map(_.toByte))
 			
 			//println(new String(data))
 			sender ! data
@@ -118,7 +117,7 @@ class Restaurant extends Actor {
 			//println(msg)
 			messages = msg :: messages
 	}
-	def toHexString(bytes:Array[Byte]) : String = {
+	def toHexString(bytes:List[String]) : String = {
       val sb = new StringBuilder();
       for(i <- 0 until bytes.length){
         sb.append("%02x".format(bytes(i)))
@@ -139,11 +138,10 @@ object Dining {
 		val philosophers = for((name, i) <- List("A","B","C","D","E").zipWithIndex) yield system.actorOf(Props(new Philosopher(name,chopsticks(i), chopsticks((i+1) % 5),restaurant)),name) 
 		philosophers.foreach(_ ! Eat)
 		restaurant ! "Dinner is served."
-		//restaurantObj.actorStream
-
+	
 		val actorStream = { () =>
 			//Promise.timeout(Some(restarant ? Dump), 100 milliseconds)
-			(restaurant ? Dump)(5 seconds).mapTo[Option[Array[Byte]]].asPromise//.asPromise
+			(restaurant ? Dump)(5 seconds).mapTo[Option[List[String]]].asPromise//.asPromise
 			//return new Promise(new String(), 100);
 		}
 		actorStream
