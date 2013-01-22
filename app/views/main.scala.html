@@ -1,20 +1,51 @@
-@(title: String)(content: Html)
+@(connected: Option[String])(content: Html)
 
 <!DOCTYPE html>
 
-<html ng-app>
+<html>
     <head>
-        <title>@title</title>
+        <title>Dining Philosophers with Play and Akka</title>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/bootstrap.css")">
         <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
         <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
-        <link href="https://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/css/bootstrap-combined.min.css" rel="stylesheet">
-        <script src="https://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js" type="text/javascript"></script>
-        <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.3/angular.min.js" type="text/javascript"></script>
-        <script src="http://localhost:9000/assets/javascripts/chatctrl.js" type="text/javascript"></script>
+        <script src="@routes.Assets.at("javascripts/jquery-1.7.1.min.js")" type="text/javascript"></script>
     </head>
     <body>
-        @content
-    
+        
+        <div class="topbar">
+            <div class="fill">
+                <div class="container">
+                    <a class="brand" href="@routes.Application.index()">Dining Philosophers with Play and Akka</a>
+                    
+                    @connected.map { username =>
+                        <p class="pull-right">
+                            Logged in as @username —
+                            <a href="@routes.Application.index()">Disconnect</a>
+                        </p>
+                    }.getOrElse {
+                        <form action="@routes.Application.chatRoom()" class="pull-right">
+                            <input id="username" name="username" class="input-small" type="text" placeholder="Username">
+                            <button class="btn" type="submit">Sign in</button>
+                        </form>
+                    }
+                    
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+
+            <div class="content">
+                @content
+            </div>
+
+            <footer>
+                <p>
+                    <a href="http://www.playframework.org">www.playframework.org</a>
+                </p>
+            </footer>
+
+        </div>
+        
     </body>
 </html>
